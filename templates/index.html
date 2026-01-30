@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🇸🇬 SG Outdoor Guide - Weather, Exercise & More</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 15px;
+        }
+        
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        header { text-align: center; margin-bottom: 25px; }
+        h1 { font-size: 2rem; margin-bottom: 8px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .subtitle { color: #94a3b8; font-size: 0.95rem; }
+        .timestamp { color: #64748b; font-size: 0.8rem; margin-top: 5px; }
+        
+        .hero-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .hero-card {
+            background: rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .hero-card h3 { font-size: 0.9rem; color: #94a3b8; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .exercise-score {
+            font-size: 4rem;
+            font-weight: 700;
+            line-height: 1;
+            margin: 10px 0;
+        }
+        
+        .verdict {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 5px 0;
+        }
+        
+        .advice { font-size: 0.85rem; color: #cbd5e1; margin-top: 8px; }
+        
+        .laundry-verdict { font-size: 3rem; margin: 10px 0; }
+        
+        .current-conditions {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        .condition-item {
+            text-align: center;
+        }
+        
+        .condition-value { font-size: 1.8rem; font-weight: 600; }
+        .condition-label { font-size: 0.75rem; color: #94a3b8; }
+        
+        .activities-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .activity-item {
+            background: rgba(255,255,255,0.05);
+            padding: 10px 15px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .activity-emoji { font-size: 1.3rem; }
+        
+        .section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .section-title {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .psi-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+        
+        @media (max-width: 600px) {
+            .psi-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        
+        .psi-card {
+            background: rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 12px 8px;
+            text-align: center;
+        }
+        
+        .psi-region { font-size: 0.8rem; color: #e2e8f0; margin-bottom: 5px; }
+        .psi-value { font-size: 1.8rem; font-weight: 700; }
+        .psi-level { font-size: 0.7rem; margin-top: 3px; }
+        
+        .weather-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 10px;
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        
+        .weather-grid::-webkit-scrollbar { width: 5px; }
+        .weather-grid::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 3px; }
+        .weather-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+        
+        .weather-card {
+            background: rgba(255,255,255,0.06);
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .weather-emoji { font-size: 1.8rem; }
+        .weather-area { font-size: 0.85rem; font-weight: 600; }
+        .weather-forecast { font-size: 0.75rem; color: #94a3b8; }
+        
+        .rain-alert {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 12px 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .rain-alert.show { display: block; }
+        
+        .refresh-btn {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #93c5fd;
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-top: 8px;
+        }
+        
+        .refresh-btn:hover { background: rgba(59, 130, 246, 0.3); }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+        
+        .spinner {
+            width: 35px; height: 35px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .footer {
+            text-align: center;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+        
+        .footer a { color: #93c5fd; text-decoration: none; }
+        
+        .uv-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, #4CAF50 0%, #FFEB3B 33%, #FF9800 50%, #F44336 75%, #9C27B0 100%);
+            margin-top: 10px;
+            position: relative;
+        }
+        
+        .uv-marker {
+            width: 12px; height: 12px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: -2px;
+            transform: translateX(-50%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🇸🇬 SG Outdoor Guide</h1>
+            <p class="subtitle">Should you go outside? Real-time conditions for Singapore</p>
+            <p class="timestamp" id="lastUpdate">Loading...</p>
+            <button class="refresh-btn" onclick="loadDashboard()">🔄 Refresh</button>
+        </header>
+        
+        <div class="rain-alert" id="rainAlert">
+            🌧️ <strong>Rain expected</strong> in some areas - check forecasts below
+        </div>
+        
+        <div id="dashboardContainer">
+            <div class="loading">
+                <div class="spinner"></div>
+                Loading Singapore conditions...
+            </div>
+        </div>
+        
+        <div class="footer">
+            Data from <a href="https://data.gov.sg" target="_blank">data.gov.sg</a> • 
+            Not just another weather app 😉
+        </div>
+    </div>
+    
+    <script>
+        async function loadDashboard() {
+            document.getElementById('dashboardContainer').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading Singapore conditions...
+                </div>
+            `;
+            
+            try {
+                const response = await fetch('/api/dashboard');
+                const data = await response.json();
+                
+                if (!data.success) throw new Error(data.error);
+                
+                document.getElementById('lastUpdate').textContent = `Updated: ${data.timestamp} SGT`;
+                
+                // Rain alert
+                const rainAlert = document.getElementById('rainAlert');
+                rainAlert.classList.toggle('show', data.rain_expected);
+                
+                // Build dashboard HTML
+                let html = `
+                    <div class="hero-grid">
+                        <!-- Exercise Score -->
+                        <div class="hero-card">
+                            <h3>🏃 Exercise Outside?</h3>
+                            <div class="exercise-score" style="color: ${data.exercise.color}">${data.exercise.score}</div>
+                            <div class="verdict" style="color: ${data.exercise.color}">${data.exercise.emoji} ${data.exercise.verdict}</div>
+                            <p class="advice">${data.exercise.advice}</p>
+                        </div>
+                        
+                        <!-- Laundry -->
+                        <div class="hero-card">
+                            <h3>👕 Hang Laundry?</h3>
+                            <div class="laundry-verdict">${data.laundry.emoji}</div>
+                            <div class="verdict" style="color: ${data.laundry.color}">${data.laundry.verdict}</div>
+                            <p class="advice">${data.laundry.advice}</p>
+                        </div>
+                        
+                        <!-- Current Conditions -->
+                        <div class="hero-card">
+                            <h3>📊 Current Conditions</h3>
+                            <div class="current-conditions">
+                                <div class="condition-item">
+                                    <div class="condition-value">${data.current.temperature}°C</div>
+                                    <div class="condition-label">Temperature</div>
+                                </div>
+                                <div class="condition-item">
+                                    <div class="condition-value">${data.current.humidity}%</div>
+                                    <div class="condition-label">Humidity</div>
+                                </div>
+                                <div class="condition-item">
+                                    <div class="condition-value" style="color: ${data.current.uv_info.color}">${data.current.uv_index}</div>
+                                    <div class="condition-label">UV Index</div>
+                                </div>
+                                <div class="condition-item">
+                                    <div class="condition-value">${data.current.avg_psi}</div>
+                                    <div class="condition-label">Avg PSI</div>
+                                </div>
+                            </div>
+                            <div class="uv-bar">
+                                <div class="uv-marker" style="left: ${Math.min(data.current.uv_index / 12 * 100, 100)}%"></div>
+                            </div>
+                            <p class="advice" style="margin-top: 10px">UV: ${data.current.uv_info.advice}</p>
+                        </div>
+                        
+                        <!-- Activity Suggestions -->
+                        <div class="hero-card">
+                            <h3>🎯 Suggested Activities</h3>
+                            <div class="activities-list">
+                                ${data.activities.map(a => `
+                                    <div class="activity-item">
+                                        <span class="activity-emoji">${a.emoji}</span>
+                                        <span>${a.activity}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- PSI by Region -->
+                    <section class="section">
+                        <h2 class="section-title">🌬️ Air Quality by Region</h2>
+                        <div class="psi-grid">
+                            ${data.psi_regions.map(r => `
+                                <div class="psi-card">
+                                    <div class="psi-region">${r.region}</div>
+                                    <div class="psi-value" style="color: ${r.color}">${r.psi}</div>
+                                    <div class="psi-level" style="color: ${r.color}">${r.emoji} ${r.level}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </section>
+                    
+                    <!-- 2-Hour Weather by Area -->
+                    <section class="section">
+                        <h2 class="section-title">🌤️ 2-Hour Forecast by Area</h2>
+                        <div class="weather-grid">
+                            ${data.forecasts.map(f => `
+                                <div class="weather-card">
+                                    <span class="weather-emoji">${f.emoji}</span>
+                                    <div>
+                                        <div class="weather-area">${f.area}</div>
+                                        <div class="weather-forecast">${f.forecast}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </section>
+                `;
+                
+                document.getElementById('dashboardContainer').innerHTML = html;
+                
+            } catch (error) {
+                document.getElementById('dashboardContainer').innerHTML = `
+                    <div class="section" style="text-align: center; color: #fca5a5;">
+                        Failed to load: ${error.message}<br>
+                        <button class="refresh-btn" onclick="loadDashboard()" style="margin-top: 15px">Try Again</button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Initial load
+        loadDashboard();
+        
+        // Auto-refresh every 5 minutes
+        setInterval(loadDashboard, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
