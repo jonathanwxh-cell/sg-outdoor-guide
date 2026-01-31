@@ -290,13 +290,24 @@
                             <p class="advice">${data.laundry.advice}</p>
                         </div>
                         
+                        <!-- Feels Like Temperature -->
+                        <div class="hero-card">
+                            <h3>🌡️ Feels Like</h3>
+                            <div class="exercise-score" style="color: ${data.current.feels_like_info.color}">${data.current.feels_like}°</div>
+                            <div class="verdict" style="color: ${data.current.feels_like_info.color}">${data.current.feels_like_info.emoji} ${data.current.feels_like_info.level}</div>
+                            <p class="advice">${data.current.feels_like_info.advice}</p>
+                            <div style="margin-top: 12px; font-size: 0.8rem; color: #94a3b8;">
+                                Actual: ${data.current.temperature}°C · Humidity: ${data.current.humidity}%
+                            </div>
+                        </div>
+                        
                         <!-- Current Conditions -->
                         <div class="hero-card">
                             <h3>📊 Current Conditions</h3>
                             <div class="current-conditions">
                                 <div class="condition-item">
                                     <div class="condition-value">${data.current.temperature}°C</div>
-                                    <div class="condition-label">Temperature</div>
+                                    <div class="condition-label">Actual Temp</div>
                                 </div>
                                 <div class="condition-item">
                                     <div class="condition-value">${data.current.humidity}%</div>

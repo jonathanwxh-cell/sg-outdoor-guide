@@ -18,6 +18,51 @@ UV_API = "https://api.data.gov.sg/v1/environment/uv-index"
 TEMP_API = "https://api.data.gov.sg/v1/environment/air-temperature"
 HUMIDITY_API = "https://api.data.gov.sg/v1/environment/relative-humidity"
 
+def calculate_heat_index(temp_c, humidity):
+    """Calculate 'feels like' temperature using heat index formula"""
+    # Convert to Fahrenheit for the standard formula
+    temp_f = (temp_c * 9/5) + 32
+    
+    # Simple formula for lower temps
+    if temp_f < 80:
+        hi_f = 0.5 * (temp_f + 61.0 + ((temp_f - 68.0) * 1.2) + (humidity * 0.094))
+    else:
+        # Rothfusz regression formula
+        hi_f = (-42.379 + 
+                2.04901523 * temp_f + 
+                10.14333127 * humidity - 
+                0.22475541 * temp_f * humidity - 
+                0.00683783 * temp_f**2 - 
+                0.05481717 * humidity**2 + 
+                0.00122874 * temp_f**2 * humidity + 
+                0.00085282 * temp_f * humidity**2 - 
+                0.00000199 * temp_f**2 * humidity**2)
+        
+        # Adjustments
+        if humidity < 13 and 80 <= temp_f <= 112:
+            adj = ((13 - humidity) / 4) * ((17 - abs(temp_f - 95)) / 17)**0.5
+            hi_f -= adj
+        elif humidity > 85 and 80 <= temp_f <= 87:
+            adj = ((humidity - 85) / 10) * ((87 - temp_f) / 5)
+            hi_f += adj
+    
+    # Convert back to Celsius
+    hi_c = (hi_f - 32) * 5/9
+    return round(hi_c, 1)
+
+def get_feels_like_verdict(feels_like):
+    """Get advice based on feels-like temperature"""
+    if feels_like >= 40:
+        return {"level": "Extreme", "color": "#9C27B0", "emoji": "🥵", "advice": "Dangerous heat - stay indoors with AC"}
+    elif feels_like >= 35:
+        return {"level": "Very Hot", "color": "#F44336", "emoji": "🔥", "advice": "Limit outdoor activity, hydrate constantly"}
+    elif feels_like >= 32:
+        return {"level": "Hot", "color": "#FF9800", "emoji": "☀️", "advice": "Take breaks in shade, drink water"}
+    elif feels_like >= 28:
+        return {"level": "Warm", "color": "#FFEB3B", "emoji": "🌤️", "advice": "Comfortable for most activities"}
+    else:
+        return {"level": "Pleasant", "color": "#4CAF50", "emoji": "😊", "advice": "Great conditions!"}
+
 def get_psi_level(psi_value):
     """Return PSI level description and color"""
     if psi_value <= 50:
@@ -223,6 +268,10 @@ def api_dashboard():
                 if any(kw in forecast_text.lower() for kw in rain_keywords):
                     rain_expected = True
         
+        # Calculate feels-like temperature
+        feels_like = calculate_heat_index(temp_value, humidity_value)
+        feels_like_info = get_feels_like_verdict(feels_like)
+        
         # Calculate smart scores
         exercise_score = calculate_exercise_score(psi_value, uv_value, temp_value, humidity_value)
         exercise_verdict = get_exercise_verdict(exercise_score)
@@ -246,7 +295,9 @@ def api_dashboard():
                 "humidity": round(humidity_value, 1),
                 "uv_index": uv_value,
                 "uv_info": uv_info,
-                "avg_psi": round(psi_value)
+                "avg_psi": round(psi_value),
+                "feels_like": feels_like,
+                "feels_like_info": feels_like_info
             },
             "psi_regions": psi_regions,
             "exercise": {
