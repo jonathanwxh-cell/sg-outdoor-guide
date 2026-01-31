@@ -222,6 +222,99 @@
             transform: translateX(-50%);
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
+        
+        .rain-radar-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        @media (max-width: 768px) {
+            .rain-radar-container { grid-template-columns: 1fr; }
+        }
+        
+        .radar-image-box {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .radar-image {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .radar-time {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+        }
+        
+        .rain-status-box {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .rain-status-header {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+        }
+        
+        .rain-status-emoji { font-size: 3rem; }
+        .rain-status-text { font-size: 1.3rem; font-weight: 600; margin: 8px 0; }
+        .rain-status-msg { font-size: 0.85rem; color: #94a3b8; }
+        
+        .raining-list {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .raining-list h4 { font-size: 0.85rem; color: #94a3b8; margin-bottom: 8px; }
+        
+        .rain-station {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.85rem;
+        }
+        
+        .rain-station:last-child { border-bottom: none; }
+        .rain-amount { color: #60a5fa; font-weight: 600; }
+        
+        .rain-forecast-areas {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 12px;
+        }
+        
+        .rain-forecast-areas h4 { font-size: 0.85rem; color: #94a3b8; margin-bottom: 8px; }
+        
+        .forecast-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        
+        .forecast-tag {
+            background: rgba(96, 165, 250, 0.2);
+            color: #93c5fd;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+        }
     </style>
 </head>
 <body>
@@ -342,6 +435,17 @@
                         </div>
                     </div>
                     
+                    <!-- Rain Radar -->
+                    <section class="section" id="rainSection">
+                        <h2 class="section-title">🌧️ Rain Radar</h2>
+                        <div id="rainContainer">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                                Loading rain data...
+                            </div>
+                        </div>
+                    </section>
+                    
                     <!-- PSI by Region -->
                     <section class="section">
                         <h2 class="section-title">🌬️ Air Quality by Region</h2>
@@ -385,11 +489,75 @@
             }
         }
         
+        async function loadRain() {
+            try {
+                const response = await fetch('/api/rain');
+                const data = await response.json();
+                
+                if (!data.success) throw new Error(data.error);
+                
+                let html = `
+                    <div class="rain-radar-container">
+                        <div class="radar-image-box">
+                            <img src="${data.current_radar}" alt="Rain Radar" class="radar-image" 
+                                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 400%22><rect fill=%22%23333%22 width=%22400%22 height=%22400%22/><text x=%22200%22 y=%22200%22 text-anchor=%22middle%22 fill=%22%23666%22>Radar loading...</text></svg>'">
+                            <div class="radar-time">Updated: ${data.timestamp.split(' ')[1]}</div>
+                        </div>
+                        
+                        <div class="rain-status-box">
+                            <div class="rain-status-header">
+                                <div class="rain-status-emoji">${data.rain_status.emoji}</div>
+                                <div class="rain-status-text" style="color: ${data.rain_status.color}">${data.rain_status.status}</div>
+                                <div class="rain-status-msg">${data.rain_status.message}</div>
+                            </div>
+                            
+                            ${data.raining_now.length > 0 ? `
+                                <div class="raining-list">
+                                    <h4>💧 Currently Raining</h4>
+                                    ${data.raining_now.map(s => `
+                                        <div class="rain-station">
+                                            <span>${s.name}</span>
+                                            <span class="rain-amount">${s.rainfall}mm</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                            
+                            ${data.rain_forecast_areas.length > 0 ? `
+                                <div class="rain-forecast-areas">
+                                    <h4>🌧️ Rain Expected (2hr forecast)</h4>
+                                    <div class="forecast-tags">
+                                        ${data.rain_forecast_areas.map(a => `<span class="forecast-tag">${a}</span>`).join('')}
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="rain-forecast-areas">
+                                    <h4>☀️ Next 2 Hours</h4>
+                                    <p style="font-size: 0.85rem; color: #94a3b8;">No rain forecast for any area</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('rainContainer').innerHTML = html;
+                
+            } catch (error) {
+                document.getElementById('rainContainer').innerHTML = `
+                    <div style="color: #fca5a5;">Failed to load rain data: ${error.message}</div>
+                `;
+            }
+        }
+        
         // Initial load
         loadDashboard();
+        loadRain();
         
         // Auto-refresh every 5 minutes
-        setInterval(loadDashboard, 5 * 60 * 1000);
+        setInterval(() => {
+            loadDashboard();
+            loadRain();
+        }, 5 * 60 * 1000);
     </script>
 </body>
 </html>

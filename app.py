@@ -5,13 +5,14 @@ Features: Exercise safety, laundry forecast, activity suggestions
 """
 from flask import Flask, render_template, jsonify
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 app = Flask(__name__)
 
 # API endpoints
 WEATHER_API = "https://api.data.gov.sg/v1/environment/2-hour-weather-forecast"
+RAINFALL_API = "https://api.data.gov.sg/v1/environment/rainfall"
 PSI_API = "https://api.data.gov.sg/v1/environment/psi"
 WEATHER_24H_API = "https://api.data.gov.sg/v1/environment/24-hour-weather-forecast"
 UV_API = "https://api.data.gov.sg/v1/environment/uv-index"
@@ -385,6 +386,88 @@ def api_psi():
             "timestamp": datetime.now(pytz.timezone('Asia/Singapore')).strftime("%Y-%m-%d %H:%M:%S"),
             "regions": regions
         })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/rain")
+def api_rain():
+    """Get rain radar and rainfall data"""
+    try:
+        # Get current Singapore time
+        sg_tz = pytz.timezone('Asia/Singapore')
+        now = datetime.now(sg_tz)
+        
+        # Generate radar image URLs (last 6 frames for animation, 5-min intervals)
+        radar_frames = []
+        for i in range(6):
+            frame_time = now - timedelta(minutes=i*5)
+            # Round down to nearest 5 minutes
+            mins = (frame_time.minute // 5) * 5
+            frame_time = frame_time.replace(minute=mins, second=0, microsecond=0)
+            timestamp = frame_time.strftime("%Y%m%d%H%M")
+            url = f"https://www.weather.gov.sg/files/rainarea/50km/v2/dpsri_70km_{timestamp}0000dBR.dpsri.png"
+            radar_frames.append({
+                "time": frame_time.strftime("%H:%M"),
+                "url": url
+            })
+        
+        # Get rainfall readings from stations
+        rainfall_data = requests.get(RAINFALL_API, timeout=10).json()
+        
+        raining_stations = []
+        total_stations = 0
+        if rainfall_data.get("items") and rainfall_data["items"][0].get("readings"):
+            readings = rainfall_data["items"][0]["readings"]
+            stations_meta = {s["id"]: s for s in rainfall_data.get("metadata", {}).get("stations", [])}
+            total_stations = len(readings)
+            
+            for r in readings:
+                if r["value"] > 0:  # Currently raining
+                    station = stations_meta.get(r["station_id"], {})
+                    raining_stations.append({
+                        "name": station.get("name", r["station_id"]),
+                        "rainfall": r["value"],  # mm in last 5 min
+                        "lat": station.get("location", {}).get("latitude"),
+                        "lng": station.get("location", {}).get("longitude")
+                    })
+        
+        # Sort by rainfall amount
+        raining_stations.sort(key=lambda x: x["rainfall"], reverse=True)
+        
+        # Rain status summary
+        rain_count = len(raining_stations)
+        if rain_count == 0:
+            rain_status = {"status": "Dry", "emoji": "☀️", "color": "#4CAF50", "message": "No rain detected across Singapore"}
+        elif rain_count <= 5:
+            rain_status = {"status": "Light Rain", "emoji": "🌦️", "color": "#FFEB3B", "message": f"Rain in {rain_count} area(s)"}
+        elif rain_count <= 15:
+            rain_status = {"status": "Scattered Rain", "emoji": "🌧️", "color": "#FF9800", "message": f"Rain in {rain_count} areas"}
+        else:
+            rain_status = {"status": "Widespread Rain", "emoji": "⛈️", "color": "#F44336", "message": f"Rain across {rain_count} areas"}
+        
+        # Get 2-hour forecast for rain prediction
+        weather_data = requests.get(WEATHER_API, timeout=10).json()
+        rain_forecast = []
+        rain_keywords = ["rain", "shower", "thunder", "storm"]
+        
+        if weather_data.get("items"):
+            for f in weather_data["items"][0].get("forecasts", []):
+                if any(kw in f["forecast"].lower() for kw in rain_keywords):
+                    rain_forecast.append(f["area"])
+        
+        return jsonify({
+            "success": True,
+            "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "radar_frames": list(reversed(radar_frames)),  # Oldest first for animation
+            "current_radar": radar_frames[0]["url"],
+            "rain_status": rain_status,
+            "raining_now": raining_stations[:10],  # Top 10 wettest
+            "raining_count": rain_count,
+            "total_stations": total_stations,
+            "rain_forecast_areas": rain_forecast[:15],  # Areas expecting rain
+            "rain_expected": len(rain_forecast) > 0
+        })
+        
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
