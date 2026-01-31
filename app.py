@@ -10,6 +10,23 @@ import pytz
 
 app = Flask(__name__)
 
+# Simple visit tracking
+visit_stats = {"total": 0, "api_calls": 0, "last_visits": []}
+
+@app.before_request
+def track_visit():
+    from flask import request
+    visit_stats["total"] += 1
+    if request.path.startswith("/api/"):
+        visit_stats["api_calls"] += 1
+    # Keep last 100 visits
+    visit_stats["last_visits"].append({
+        "time": datetime.now(pytz.timezone('Asia/Singapore')).strftime("%Y-%m-%d %H:%M:%S"),
+        "path": request.path,
+        "ip": request.headers.get('X-Forwarded-For', request.remote_addr)
+    })
+    visit_stats["last_visits"] = visit_stats["last_visits"][-100:]
+
 # API endpoints
 WEATHER_API = "https://api.data.gov.sg/v1/environment/2-hour-weather-forecast"
 RAINFALL_API = "https://api.data.gov.sg/v1/environment/rainfall"
@@ -206,6 +223,17 @@ def get_weather_emoji(forecast):
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/api/stats")
+def api_stats():
+    """View traffic stats"""
+    unique_ips = len(set(v["ip"] for v in visit_stats["last_visits"]))
+    return jsonify({
+        "total_visits": visit_stats["total"],
+        "api_calls": visit_stats["api_calls"],
+        "unique_visitors_recent": unique_ips,
+        "last_10_visits": visit_stats["last_visits"][-10:]
+    })
 
 @app.route("/api/dashboard")
 def api_dashboard():
